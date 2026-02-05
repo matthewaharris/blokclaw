@@ -13,8 +13,12 @@ export default function Layout({ children }) {
       <header className={`${isDark ? 'bg-slate-950 border-slate-800' : 'bg-white border-gray-200'} border-b ${isDark ? 'text-white' : 'text-gray-900'}`}>
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <Link to="/" className="flex items-center space-x-2">
-              <span className="text-2xl">🐻⛓️</span>
+            <Link to="/" className="flex items-center space-x-3">
+              <img 
+                src="/logo.jpg" 
+                alt="BlokClaw" 
+                className="h-12 w-12 object-contain rounded-lg"
+              />
               <div>
                 <h1 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>BlokClaw</h1>
                 <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-gray-600'}`}>AI Agent API Registry</p>
@@ -22,58 +26,59 @@ export default function Layout({ children }) {
             </Link>
             
             <div className="flex items-center gap-4">
-              <Link 
-                to="/browse" 
-                className={`px-4 py-2 rounded transition ${
-                  isDark 
-                    ? `hover:bg-slate-800 ${isActive('/browse') ? 'bg-slate-800' : ''}` 
-                    : `hover:bg-gray-100 ${isActive('/browse') ? 'bg-gray-100' : ''}`
+              <nav className="flex space-x-1">
+                <Link 
+                  to="/browse" 
+                  className={`px-4 py-2 rounded transition ${
+                    isDark 
+                      ? `hover:bg-slate-800 ${isActive('/browse') ? 'bg-slate-800' : ''}` 
+                      : `hover:bg-gray-100 ${isActive('/browse') ? 'bg-gray-100' : ''}`
+                  }`}
+                >
+                  Browse
+                </Link>
+                <Link 
+                  to="/docs" 
+                  className={`px-4 py-2 rounded transition ${
+                    isDark 
+                      ? `hover:bg-slate-800 ${isActive('/docs') ? 'bg-slate-800' : ''}` 
+                      : `hover:bg-gray-100 ${isActive('/docs') ? 'bg-gray-100' : ''}`
+                  }`}
+                >
+                  Docs
+                </Link>
+                <Link 
+                  to="/stats" 
+                  className={`px-4 py-2 rounded transition ${
+                    isDark 
+                      ? `hover:bg-slate-800 ${isActive('/stats') ? 'bg-slate-800' : ''}` 
+                      : `hover:bg-gray-100 ${isActive('/stats') ? 'bg-gray-100' : ''}`
+                  }`}
+                >
+                  Stats
+                </Link>
+                <Link 
+                  to="/submit" 
+                  className={`px-4 py-2 rounded transition ${
+                    isDark 
+                      ? `hover:bg-slate-800 ${isActive('/submit') ? 'bg-slate-800' : ''}` 
+                      : `hover:bg-gray-100 ${isActive('/submit') ? 'bg-gray-100' : ''}`
+                  }`}
+                >
+                  Submit
+                </Link>
+              </nav>
+              
+              {/* Theme Toggle */}
+              <button
+                onClick={toggleTheme}
+                className={`p-2 rounded-lg transition ${
+                  isDark ? 'hover:bg-slate-800' : 'hover:bg-gray-100'
                 }`}
+                title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
               >
-                Browse
-              </Link>
-              <Link 
-                to="/docs" 
-                className={`px-4 py-2 rounded transition ${
-                  isDark 
-                    ? `hover:bg-slate-800 ${isActive('/docs') ? 'bg-slate-800' : ''}` 
-                    : `hover:bg-gray-100 ${isActive('/docs') ? 'bg-gray-100' : ''}`
-                }`}
-              >
-                Docs
-              </Link>
-              <Link 
-                to="/stats" 
-                className={`px-4 py-2 rounded transition ${
-                  isDark 
-                    ? `hover:bg-slate-800 ${isActive('/stats') ? 'bg-slate-800' : ''}` 
-                    : `hover:bg-gray-100 ${isActive('/stats') ? 'bg-gray-100' : ''}`
-                }`}
-              >
-                Stats
-              </Link>
-              <Link 
-                to="/submit" 
-                className={`px-4 py-2 rounded transition ${
-                  isDark 
-                    ? `hover:bg-slate-800 ${isActive('/submit') ? 'bg-slate-800' : ''}` 
-                    : `hover:bg-gray-100 ${isActive('/submit') ? 'bg-gray-100' : ''}`
-                }`}
-              >
-                Submit
-              </Link>
-            </nav>
-            
-            {/* Theme Toggle */}
-            <button
-              onClick={toggleTheme}
-              className={`p-2 rounded-lg transition ${
-                isDark ? 'hover:bg-slate-800' : 'hover:bg-gray-100'
-              }`}
-              title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-            >
-              {isDark ? '☀️' : '🌙'}
-            </button>
+                {isDark ? '☀️' : '🌙'}
+              </button>
             </div>
           </div>
         </div>
