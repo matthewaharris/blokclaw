@@ -10,6 +10,7 @@
     "migrate": "node migrations/run.js",
     "seed": "node scripts/seed.js",
     "seed:all": "node scripts/seed-comprehensive.js",
+    "stats:backfill": "node scripts/backfill-stats.js",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch"
   },
