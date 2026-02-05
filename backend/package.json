@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
-    "migrate": "node migrations/run.js"
+    "migrate": "node migrations/run.js",
+    "seed": "node scripts/seed.js"
   },
   "keywords": ["api", "registry", "ai", "agents"],
   "author": "Matthew Harris",

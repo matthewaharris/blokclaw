@@ -4,6 +4,11 @@ import helmet from 'helmet';
 import dotenv from 'dotenv';
 import { testConnection } from './utils/db.js';
 
+// Import routes
+import providersRouter from './routes/providers.js';
+import apisRouter from './routes/apis.js';
+import searchRouter from './routes/search.js';
+
 dotenv.config();
 
 const app = express();
@@ -19,17 +24,24 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'blokclaw-api' });
 });
 
-// API routes (to be added)
+// API routes
 app.get('/api/v1', (req, res) => {
   res.json({ 
     message: 'BlokClaw API v1',
+    version: '0.1.0',
     endpoints: {
       health: '/health',
+      providers: '/api/v1/providers',
       apis: '/api/v1/apis',
       search: '/api/v1/search'
-    }
+    },
+    documentation: 'https://github.com/matthewaharris/blokclaw'
   });
 });
+
+app.use('/api/v1/providers', providersRouter);
+app.use('/api/v1/apis', apisRouter);
+app.use('/api/v1/search', searchRouter);
 
 // 404 handler
 app.use((req, res) => {
