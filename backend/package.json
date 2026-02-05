@@ -1,0 +1,26 @@
+{
+  "name": "blokclaw-backend",
+  "version": "0.1.0",
+  "description": "BlokClaw API Registry Backend",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js",
+    "migrate": "node migrations/run.js"
+  },
+  "keywords": ["api", "registry", "ai", "agents"],
+  "author": "Matthew Harris",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.19.2",
+    "pg": "^8.11.3",
+    "dotenv": "^16.4.5",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "express-validator": "^7.0.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+}
