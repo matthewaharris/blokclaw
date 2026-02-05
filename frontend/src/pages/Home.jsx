@@ -20,8 +20,15 @@ export default function Home() {
     <div className="max-w-4xl mx-auto text-center">
       {/* Hero */}
       <div className="mb-12">
+        <div className="flex justify-center mb-6">
+          <img 
+            src="/logo.jpg" 
+            alt="BlokClaw" 
+            className="w-48 h-48 object-contain"
+          />
+        </div>
         <h1 className={`text-5xl font-bold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-          🐻⛓️ BlokClaw
+          BlokClaw
         </h1>
         <p className={`text-xl mb-2 ${isDark ? 'text-slate-300' : 'text-gray-600'}`}>
           API Registry for AI Agents
