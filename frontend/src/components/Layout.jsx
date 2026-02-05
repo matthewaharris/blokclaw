@@ -27,6 +27,12 @@ export default function Layout({ children }) {
                 Browse
               </Link>
               <Link 
+                to="/docs" 
+                className={`px-4 py-2 rounded hover:bg-gray-700 transition ${isActive('/docs')}`}
+              >
+                Docs
+              </Link>
+              <Link 
                 to="/stats" 
                 className={`px-4 py-2 rounded hover:bg-gray-700 transition ${isActive('/stats')}`}
               >

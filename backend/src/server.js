@@ -9,6 +9,7 @@ import providersRouter from './routes/providers.js';
 import apisRouter from './routes/apis.js';
 import searchRouter from './routes/search.js';
 import agentsRouter from './routes/agents.js';
+import statsRouter from './routes/stats.js';
 
 // Import middleware
 import { apiLimiter } from './middleware/rateLimiter.js';
@@ -48,6 +49,7 @@ app.use('/api/v1/providers', providersRouter);
 app.use('/api/v1/apis', apisRouter);
 app.use('/api/v1/search', searchRouter);
 app.use('/api/v1/agents', agentsRouter);
+app.use('/api/v1/stats', statsRouter);
 
 // 404 handler
 app.use((req, res) => {

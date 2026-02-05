@@ -1,45 +1,31 @@
 import { useState, useEffect } from 'react'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 export default function Stats() {
   const [stats, setStats] = useState({
     totalAPIs: 0,
     totalProviders: 0,
     verifiedAPIs: 0,
-    totalAgents: 0,
-    todayAPIs: 0,
-    todayAgents: 0,
     categories: [],
     recentAPIs: [],
     topAPIs: []
   })
-  const [timeseriesData, setTimeseriesData] = useState([])
-  const [dateRange, setDateRange] = useState(30) // days
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     fetchStats()
-    fetchTimeseries(dateRange)
   }, [])
-
-  useEffect(() => {
-    fetchTimeseries(dateRange)
-  }, [dateRange])
 
   const fetchStats = async () => {
     setLoading(true)
     try {
-      // Fetch summary stats
-      const summaryRes = await fetch('/api/v1/stats/summary')
-      const summaryData = await summaryRes.json()
-
-      // Fetch all APIs for additional stats
-      const apisRes = await fetch('/api/v1/apis?limit=100')
-      const apisData = await apisRes.json()
-      const apis = apisData.apis || []
+      // Fetch all APIs to calculate stats
+      const response = await fetch('/api/v1/apis?limit=100')
+      const data = await response.json()
+      const apis = data.apis || []
 
       // Calculate stats
       const providers = new Set(apis.map(api => api.provider_name))
+      const verified = apis.filter(api => api.verified).length
       
       // Category breakdown
       const categoryCount = {}
@@ -57,12 +43,9 @@ export default function Stats() {
       const top = [...apis].sort((a, b) => b.view_count - a.view_count).slice(0, 5)
 
       setStats({
-        totalAPIs: summaryData.total_apis || apis.length,
-        verifiedAPIs: summaryData.verified_apis || apis.filter(a => a.verified).length,
-        totalProviders: summaryData.total_providers || providers.size,
-        totalAgents: summaryData.total_agents || 0,
-        todayAPIs: summaryData.today?.apis_registered || 0,
-        todayAgents: summaryData.today?.unique_agents || 0,
+        totalAPIs: apis.length,
+        totalProviders: providers.size,
+        verifiedAPIs: verified,
         categories,
         recentAPIs: recent,
         topAPIs: top
@@ -71,26 +54,6 @@ export default function Stats() {
       console.error('Error fetching stats:', error)
     } finally {
       setLoading(false)
-    }
-  }
-
-  const fetchTimeseries = async (days) => {
-    try {
-      const res = await fetch(`/api/v1/stats/timeseries?days=${days}`)
-      const data = await res.json()
-      
-      // Format data for charts
-      const formatted = data.data.map(row => ({
-        date: new Date(row.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        'APIs Registered': row.apis_registered,
-        'Unique Agents': row.unique_agents,
-        'Total APIs': row.total_apis,
-        'Total Agents': row.total_agents
-      }))
-      
-      setTimeseriesData(formatted)
-    } catch (error) {
-      console.error('Error fetching timeseries:', error)
     }
   }
 
@@ -113,7 +76,6 @@ export default function Stats() {
             {stats.totalAPIs}
           </div>
           <div className="text-gray-600">Total APIs</div>
-          <div className="text-sm text-gray-400 mt-1">+{stats.todayAPIs} today</div>
         </div>
 
         <div className="bg-white rounded-lg shadow-sm p-6">
@@ -132,76 +94,10 @@ export default function Stats() {
 
         <div className="bg-white rounded-lg shadow-sm p-6">
           <div className="text-3xl font-bold text-orange-600 mb-2">
-            {stats.totalAgents}
+            {stats.categories.length}
           </div>
-          <div className="text-gray-600">Agents</div>
-          <div className="text-sm text-gray-400 mt-1">{stats.todayAgents} today</div>
+          <div className="text-gray-600">Categories</div>
         </div>
-      </div>
-
-      {/* Time-series Charts */}
-      <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold">Activity Over Time</h2>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setDateRange(7)}
-              className={`px-3 py-1 rounded text-sm ${dateRange === 7 ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-            >
-              7d
-            </button>
-            <button
-              onClick={() => setDateRange(30)}
-              className={`px-3 py-1 rounded text-sm ${dateRange === 30 ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-            >
-              30d
-            </button>
-            <button
-              onClick={() => setDateRange(90)}
-              className={`px-3 py-1 rounded text-sm ${dateRange === 90 ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-            >
-              90d
-            </button>
-          </div>
-        </div>
-
-        {timeseriesData.length > 0 ? (
-          <div className="space-y-8">
-            {/* Daily Activity Chart */}
-            <div>
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">Daily Activity</h3>
-              <ResponsiveContainer width="100%" height={250}>
-                <LineChart data={timeseriesData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Line type="monotone" dataKey="APIs Registered" stroke="#3b82f6" strokeWidth={2} />
-                  <Line type="monotone" dataKey="Unique Agents" stroke="#f59e0b" strokeWidth={2} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-
-            {/* Cumulative Growth Chart */}
-            <div>
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">Cumulative Growth</h3>
-              <ResponsiveContainer width="100%" height={250}>
-                <LineChart data={timeseriesData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Line type="monotone" dataKey="Total APIs" stroke="#10b981" strokeWidth={2} />
-                  <Line type="monotone" dataKey="Total Agents" stroke="#8b5cf6" strokeWidth={2} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        ) : (
-          <p className="text-gray-500 text-center py-8">No data available for this period</p>
-        )}
       </div>
 
       <div className="grid md:grid-cols-2 gap-8">
@@ -274,7 +170,7 @@ export default function Stats() {
           To programmatically discover APIs, use the search endpoint:
         </p>
         <code className="block bg-white rounded p-3 text-sm">
-          GET /api/v1/agents/discover?q=weather&category=weather&tags=forecast
+          GET /api/v1/search?q=weather&category=weather&tags=forecast
         </code>
         <p className="text-sm text-gray-600 mt-3">
           Returns structured JSON with API contracts, auth requirements, and integration examples.

@@ -12,7 +12,8 @@ async function runMigrations() {
     
     const migrations = [
       '001_initial_schema.sql',
-      '002_agent_tracking.sql'
+      '002_agent_tracking.sql',
+      '003_stats_tracking.sql'
     ];
     
     for (const file of migrations) {
