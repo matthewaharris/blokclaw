@@ -8,6 +8,10 @@ import { testConnection } from './utils/db.js';
 import providersRouter from './routes/providers.js';
 import apisRouter from './routes/apis.js';
 import searchRouter from './routes/search.js';
+import agentsRouter from './routes/agents.js';
+
+// Import middleware
+import { apiLimiter } from './middleware/rateLimiter.js';
 
 dotenv.config();
 
@@ -18,6 +22,7 @@ const PORT = process.env.PORT || 3000;
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
+app.use('/api/', apiLimiter);
 
 // Health check
 app.get('/health', (req, res) => {
@@ -42,6 +47,7 @@ app.get('/api/v1', (req, res) => {
 app.use('/api/v1/providers', providersRouter);
 app.use('/api/v1/apis', apisRouter);
 app.use('/api/v1/search', searchRouter);
+app.use('/api/v1/agents', agentsRouter);
 
 // 404 handler
 app.use((req, res) => {

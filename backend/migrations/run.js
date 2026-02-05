@@ -10,12 +10,16 @@ async function runMigrations() {
   try {
     console.log('🔄 Running migrations...');
     
-    const migration = readFileSync(
-      join(__dirname, '001_initial_schema.sql'),
-      'utf8'
-    );
+    const migrations = [
+      '001_initial_schema.sql',
+      '002_agent_tracking.sql'
+    ];
     
-    await pool.query(migration);
+    for (const file of migrations) {
+      console.log(`  Running ${file}...`);
+      const migration = readFileSync(join(__dirname, file), 'utf8');
+      await pool.query(migration);
+    }
     
     console.log('✅ Migrations completed successfully');
     process.exit(0);
