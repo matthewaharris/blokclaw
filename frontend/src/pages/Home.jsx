@@ -22,7 +22,7 @@ export default function Home() {
       <div className="mb-12">
         <div className="flex justify-center mb-6">
           <img 
-            src="/logo.jpg" 
+            src="/blokclaw_transparent.png" 
             alt="BlokClaw" 
             className="w-48 h-48 object-contain"
           />

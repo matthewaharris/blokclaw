@@ -15,9 +15,9 @@ export default function Layout({ children }) {
           <div className="flex items-center justify-between">
             <Link to="/" className="flex items-center space-x-3">
               <img 
-                src="/logo.jpg" 
+                src="/blokclaw_transparent.png" 
                 alt="BlokClaw" 
-                className="h-12 w-12 object-contain rounded-lg"
+                className="h-12 w-12 object-contain"
               />
               <div>
                 <h1 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>BlokClaw</h1>
