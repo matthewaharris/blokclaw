@@ -9,6 +9,8 @@ import Docs from './pages/Docs'
 import Terms from './pages/Terms'
 import Login from './pages/Login'
 import Admin from './pages/Admin'
+import Privacy from './pages/Privacy'
+import DMCA from './pages/DMCA'
 
 function App() {
   return (
@@ -23,6 +25,8 @@ function App() {
         <Route path="/terms" element={<Terms />} />
         <Route path="/login" element={<Login />} />
         <Route path="/admin" element={<Admin />} />
+        <Route path="/privacy" element={<Privacy />} />
+        <Route path="/dmca" element={<DMCA />} />
       </Routes>
     </Layout>
   )

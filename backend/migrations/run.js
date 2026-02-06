@@ -15,7 +15,8 @@ async function runMigrations() {
       '002_agent_tracking.sql',
       '003_stats_tracking.sql',
       '004_tos_and_security.sql',
-      '005_features.sql'
+      '005_features.sql',
+      '006_domain_verification.sql'
     ];
     
     for (const file of migrations) {

@@ -80,6 +80,40 @@ export class Provider {
     return result.rows[0];
   }
 
+  // Set domain verification code
+  static async setDomainVerificationCode(id, code) {
+    const query = `
+      UPDATE providers SET domain_verification_code = $1, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $2 RETURNING *
+    `;
+    const result = await pool.query(query, [code, id]);
+    return result.rows[0];
+  }
+
+  // Mark domain as verified and set provider + their APIs as verified
+  static async verifyDomain(id) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const result = await client.query(
+        `UPDATE providers SET domain_verified = true, verified = true, updated_at = CURRENT_TIMESTAMP
+         WHERE id = $1 RETURNING *`,
+        [id]
+      );
+      await client.query(
+        `UPDATE apis SET verified = true, updated_at = CURRENT_TIMESTAMP WHERE provider_id = $1`,
+        [id]
+      );
+      await client.query('COMMIT');
+      return result.rows[0];
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
   // Verify provider (admin action)
   static async verify(id) {
     const query = `

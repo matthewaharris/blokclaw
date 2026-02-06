@@ -155,8 +155,76 @@ router.get('/me', authenticateProvider, async (req, res) => {
     website: req.provider.website,
     verified: req.provider.verified,
     email_verified: req.provider.email_verified,
+    domain_verified: req.provider.domain_verified,
+    domain_verification_code: req.provider.domain_verification_code,
     created_at: req.provider.created_at
   });
+});
+
+// POST /api/v1/providers/verify-domain - Verify domain ownership
+router.post('/verify-domain', authenticateProvider, async (req, res) => {
+  try {
+    const provider = req.provider;
+
+    if (!provider.website) {
+      return res.status(400).json({ error: 'No website set on your account. Update your profile with a website first.' });
+    }
+
+    if (provider.domain_verified) {
+      return res.json({ message: 'Domain already verified' });
+    }
+
+    // Generate code if not already set
+    let code = provider.domain_verification_code;
+    if (!code) {
+      code = `blokclaw-verify-${crypto.randomUUID()}`;
+      await Provider.setDomainVerificationCode(provider.id, code);
+    }
+
+    // Check for well-known file at provider's website
+    const websiteUrl = provider.website.replace(/\/$/, '');
+    const verifyUrl = `${websiteUrl}/.well-known/blokclaw-verify.txt`;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+
+    try {
+      const response = await fetch(verifyUrl, { signal: controller.signal });
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        return res.status(400).json({
+          error: 'Verification file not found',
+          instructions: `Create a file at ${verifyUrl} containing: ${code}`,
+          verification_code: code
+        });
+      }
+
+      const content = (await response.text()).trim();
+      if (content !== code) {
+        return res.status(400).json({
+          error: 'Verification code does not match',
+          instructions: `The file at ${verifyUrl} must contain exactly: ${code}`,
+          verification_code: code
+        });
+      }
+
+      // Domain verified — mark provider and their APIs as verified
+      await Provider.verifyDomain(provider.id);
+
+      res.json({ message: 'Domain verified successfully. Your provider account and APIs are now verified.' });
+    } catch (fetchErr) {
+      clearTimeout(timeout);
+      return res.status(400).json({
+        error: 'Could not reach your website to verify domain',
+        instructions: `Create a file at ${verifyUrl} containing: ${code}`,
+        verification_code: code
+      });
+    }
+  } catch (error) {
+    console.error('Error verifying domain:', error);
+    res.status(500).json({ error: 'Failed to verify domain' });
+  }
 });
 
 // GET /api/v1/providers/:id - Get provider details (public)

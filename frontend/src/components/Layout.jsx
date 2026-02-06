@@ -110,6 +110,14 @@ export default function Layout({ children }) {
             <Link to="/terms" className="text-blue-400 hover:text-blue-300">
               Terms of Service
             </Link>
+            {' '} • {' '}
+            <Link to="/privacy" className="text-blue-400 hover:text-blue-300">
+              Privacy Policy
+            </Link>
+            {' '} • {' '}
+            <Link to="/dmca" className="text-blue-400 hover:text-blue-300">
+              DMCA
+            </Link>
             {' '} • Built for OpenClaw agents
           </p>
         </div>

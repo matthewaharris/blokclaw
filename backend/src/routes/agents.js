@@ -188,7 +188,6 @@ router.get('/discover', [
         },
         provider: {
           name: api.provider_name,
-          email: api.provider_email,
           website: api.provider_website
         },
         category: api.category,
