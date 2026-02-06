@@ -39,11 +39,22 @@ export default function Browse() {
 
   const handleSearch = (e) => {
     e.preventDefault()
+    performSearch()
+  }
+
+  const performSearch = () => {
     const params = {}
     if (searchQuery) params.q = searchQuery
     if (category) params.category = category
     setSearchParams(params)
   }
+
+  // Auto-search when category changes
+  useEffect(() => {
+    if (category !== searchParams.get('category')) {
+      performSearch()
+    }
+  }, [category])
 
   const clearFilters = () => {
     setSearchQuery('')
@@ -68,7 +79,9 @@ export default function Browse() {
             />
             <select
               value={category}
-              onChange={(e) => setCategory(e.target.value)}
+              onChange={(e) => {
+                setCategory(e.target.value)
+              }}
               className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">All Categories</option>
