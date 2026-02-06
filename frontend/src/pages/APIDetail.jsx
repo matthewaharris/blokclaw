@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
+import { API_BASE_URL } from '../config'
 
 export default function APIDetail() {
   const { slug } = useParams()
@@ -13,7 +14,7 @@ export default function APIDetail() {
   const fetchAPI = async () => {
     setLoading(true)
     try {
-      const response = await fetch(`/api/v1/apis/${slug}`)
+      const response = await fetch(`${API_BASE_URL}/api/v1/apis/${slug}`)
       const data = await response.json()
       setApi(data)
     } catch (error) {

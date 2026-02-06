@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { API_BASE_URL } from '../config'
 
 export default function Stats() {
   const [stats, setStats] = useState({
@@ -28,7 +29,7 @@ export default function Stats() {
     setLoading(true)
     try {
       // Fetch all APIs to calculate stats
-      const response = await fetch('/api/v1/apis?limit=100')
+      const response = await fetch(`${API_BASE_URL}/api/v1/apis?limit=100`)
       const data = await response.json()
       const apis = data.apis || []
 
@@ -52,7 +53,7 @@ export default function Stats() {
       const top = [...apis].sort((a, b) => b.view_count - a.view_count).slice(0, 5)
 
       // Fetch agent count
-      const summaryRes = await fetch('/api/v1/stats/summary')
+      const summaryRes = await fetch(`${API_BASE_URL}/api/v1/stats/summary`)
       const summary = await summaryRes.json()
 
       setStats({
@@ -73,7 +74,7 @@ export default function Stats() {
 
   const fetchTimeseries = async (days) => {
     try {
-      const response = await fetch(`/api/v1/stats/timeseries?days=${days}`)
+      const response = await fetch(`${API_BASE_URL}/api/v1/stats/timeseries?days=${days}`)
       const data = await response.json()
       
       // Format data for charts

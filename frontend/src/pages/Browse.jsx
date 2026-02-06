@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import { API_BASE_URL } from '../config'
 
 export default function Browse() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -18,9 +19,9 @@ export default function Browse() {
       const q = searchParams.get('q')
       const cat = searchParams.get('category')
       
-      let url = '/api/v1/apis'
+      let url = `${API_BASE_URL}/api/v1/apis`
       if (q) {
-        url = `/api/v1/search?q=${encodeURIComponent(q)}`
+        url = `${API_BASE_URL}/api/v1/search?q=${encodeURIComponent(q)}`
         if (cat) url += `&category=${encodeURIComponent(cat)}`
       } else if (cat) {
         url += `?category=${encodeURIComponent(cat)}`

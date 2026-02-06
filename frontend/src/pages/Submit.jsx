@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { API_BASE_URL } from '../config'
 
 export default function Submit() {
   const [step, setStep] = useState(1) // 1: provider, 2: API
@@ -28,7 +29,7 @@ export default function Submit() {
     setSubmitting(true)
 
     try {
-      const response = await fetch('/api/v1/providers', {
+      const response = await fetch(`${API_BASE_URL}/api/v1/providers`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(provider)
@@ -77,7 +78,7 @@ export default function Submit() {
         tags
       }
 
-      const response = await fetch('/api/v1/apis', {
+      const response = await fetch(`${API_BASE_URL}/api/v1/apis`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
