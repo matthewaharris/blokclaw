@@ -6,6 +6,9 @@ import APIDetail from './pages/APIDetail'
 import Stats from './pages/Stats'
 import Submit from './pages/Submit'
 import Docs from './pages/Docs'
+import Terms from './pages/Terms'
+import Login from './pages/Login'
+import Admin from './pages/Admin'
 
 function App() {
   return (
@@ -17,6 +20,9 @@ function App() {
         <Route path="/stats" element={<Stats />} />
         <Route path="/submit" element={<Submit />} />
         <Route path="/docs" element={<Docs />} />
+        <Route path="/terms" element={<Terms />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/admin" element={<Admin />} />
       </Routes>
     </Layout>
   )

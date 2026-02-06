@@ -3,8 +3,13 @@ import { body, query, validationResult } from 'express-validator';
 import { API } from '../models/API.js';
 import { Provider } from '../models/Provider.js';
 import { pool } from '../utils/db.js';
+import { writeLimiter } from '../middleware/rateLimiter.js';
+import { urlBlocklist } from '../middleware/urlValidator.js';
+import { validateOpenAPISpec } from '../services/openapiValidator.js';
 
 const router = express.Router();
+
+const TERMS_URL = '/terms';
 
 // POST /api/v1/agents/register - Register an agent (for tracking)
 router.post('/register', [
@@ -33,7 +38,7 @@ router.post('/register', [
         'UPDATE agents SET last_seen = CURRENT_TIMESTAMP WHERE agent_id = $1',
         [agent_id]
       );
-      return res.json({ 
+      return res.json({
         message: 'Agent updated',
         agent_id,
         returning: true
@@ -64,7 +69,8 @@ router.get('/discover', [
   query('tags').optional(),
   query('auth_type').optional().trim(),
   query('pricing').optional().trim(),
-  query('limit').optional().isInt({ min: 1, max: 100 })
+  query('limit').optional().isInt({ min: 1, max: 100 }),
+  query('agent_id').optional().trim()
 ], async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -72,7 +78,7 @@ router.get('/discover', [
   }
 
   try {
-    const { q, category, tags, auth_type, pricing, limit = 20 } = req.query;
+    const { q, category, tags, auth_type, pricing, limit = 20, agent_id } = req.query;
 
     // Parse tags
     let tagsArray = null;
@@ -82,7 +88,7 @@ router.get('/discover', [
 
     // Build query
     let sql = `
-      SELECT 
+      SELECT
         a.id, a.name, a.slug, a.short_description, a.long_description,
         a.category, a.contract_type, a.contract_url, a.contract_schema,
         a.auth_type, a.auth_instructions, a.test_endpoint,
@@ -142,8 +148,36 @@ router.get('/discover', [
       };
     }));
 
+    // Track discoveries non-blocking
+    if (agent_id && apis.length > 0) {
+      (async () => {
+        try {
+          for (const api of apis) {
+            await pool.query(
+              `INSERT INTO agent_api_discoveries (agent_id, api_id) VALUES ($1, $2) ON CONFLICT (agent_id, api_id) DO NOTHING`,
+              [agent_id, api.id]
+            );
+            await pool.query(
+              `UPDATE apis SET discovery_count = discovery_count + 1 WHERE id = $1`,
+              [api.id]
+            );
+          }
+          await pool.query(
+            `UPDATE agents SET api_discoveries = api_discoveries + $1, last_seen = CURRENT_TIMESTAMP WHERE agent_id = $2`,
+            [apis.length, agent_id]
+          );
+        } catch (err) {
+          console.error('Discovery tracking error:', err.message);
+        }
+      })();
+    }
+
     res.json({
       count: apis.length,
+      terms: {
+        url: TERMS_URL,
+        disclaimer: 'APIs listed in BlokClaw are user-submitted and not individually verified unless marked as such. Use at your own risk.'
+      },
       apis: apis.map(api => ({
         id: api.id,
         name: api.name,
@@ -182,6 +216,8 @@ router.get('/discover', [
 
 // POST /api/v1/agents/submit - Quick API submission for agents
 router.post('/submit', [
+  writeLimiter,
+  urlBlocklist('contract_url'),
   body('agent_id').trim().isLength({ min: 1, max: 255 }),
   body('provider_email').isEmail().normalizeEmail(),
   body('provider_name').trim().isLength({ min: 2, max: 255 }),
@@ -190,7 +226,8 @@ router.post('/submit', [
   body('category').optional().trim(),
   body('contract_url').optional().isURL(),
   body('auth_type').optional().isIn(['none', 'apikey', 'oauth2', 'bearer']),
-  body('tags').optional().isArray()
+  body('tags').optional().isArray(),
+  body('tos_accepted').equals('true').withMessage('You must accept the Terms of Service')
 ], async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -222,7 +259,8 @@ router.post('/submit', [
       provider = await Provider.create({
         email: provider_email,
         name: provider_name,
-        website: contract_url || ''
+        website: contract_url || '',
+        tosAcceptedAt: new Date()
       });
     }
 
@@ -235,7 +273,7 @@ router.post('/submit', [
     // Check if API already exists
     const existing = await API.findBySlug(slug);
     if (existing) {
-      return res.status(409).json({ 
+      return res.status(409).json({
         error: 'API with this name already exists',
         slug: existing.slug
       });
@@ -256,8 +294,19 @@ router.post('/submit', [
       authInstructions: '',
       testEndpoint: '',
       pricing: 'free',
-      tags
+      tags,
+      tosAcceptedAt: new Date()
     });
+
+    // Fire-and-forget OpenAPI validation
+    if (contract_url) {
+      validateOpenAPISpec(contract_url).then(result => {
+        API.updateOpenAPIValidation(api.id, {
+          openapiValid: result.valid,
+          openapiErrors: result.errors
+        });
+      }).catch(err => console.error('OpenAPI validation error:', err));
+    }
 
     res.status(201).json({
       message: 'API submitted successfully',
@@ -265,6 +314,10 @@ router.post('/submit', [
         id: api.id,
         slug: api.slug,
         name: api.name
+      },
+      terms: {
+        url: TERMS_URL,
+        accepted_at: new Date().toISOString()
       }
     });
   } catch (error) {

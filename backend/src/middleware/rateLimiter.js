@@ -26,3 +26,21 @@ export const discoveryLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+// Login limiter
+export const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // 10 attempts per window
+  message: 'Too many login attempts, please try again later',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Admin limiter
+export const adminLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 200,
+  message: 'Too many admin requests, please try again later',
+  standardHeaders: true,
+  legacyHeaders: false,
+});

@@ -10,9 +10,13 @@ import apisRouter from './routes/apis.js';
 import searchRouter from './routes/search.js';
 import agentsRouter from './routes/agents.js';
 import statsRouter from './routes/stats.js';
+import adminRouter from './routes/admin.js';
 
 // Import middleware
 import { apiLimiter } from './middleware/rateLimiter.js';
+
+// Import services
+import { startHealthChecks } from './services/healthChecker.js';
 
 dotenv.config();
 
@@ -32,7 +36,7 @@ app.get('/health', (req, res) => {
 
 // API routes
 app.get('/api/v1', (req, res) => {
-  res.json({ 
+  res.json({
     message: 'BlokClaw API v1',
     version: '0.1.0',
     endpoints: {
@@ -41,6 +45,7 @@ app.get('/api/v1', (req, res) => {
       apis: '/api/v1/apis',
       search: '/api/v1/search'
     },
+    terms_of_service: '/terms',
     documentation: 'https://github.com/matthewaharris/blokclaw'
   });
 });
@@ -50,6 +55,7 @@ app.use('/api/v1/apis', apisRouter);
 app.use('/api/v1/search', searchRouter);
 app.use('/api/v1/agents', agentsRouter);
 app.use('/api/v1/stats', statsRouter);
+app.use('/api/v1/admin', adminRouter);
 
 // 404 handler
 app.use((req, res) => {
@@ -65,11 +71,12 @@ app.use((err, req, res, next) => {
 // Start server
 app.listen(PORT, async () => {
   console.log(`🐻 BlokClaw API running on http://localhost:${PORT}`);
-  
+
   // Test database connection
   const dbOk = await testConnection();
   if (dbOk) {
     console.log('✅ Database connected');
+    startHealthChecks();
   } else {
     console.error('❌ Database connection failed');
   }

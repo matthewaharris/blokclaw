@@ -2,6 +2,11 @@ import express from 'express';
 import { body, query, validationResult } from 'express-validator';
 import { API } from '../models/API.js';
 import { Provider } from '../models/Provider.js';
+import { writeLimiter } from '../middleware/rateLimiter.js';
+import { urlBlocklist } from '../middleware/urlValidator.js';
+import { authenticateProvider, requireVerifiedEmail } from '../middleware/auth.js';
+import { validateOpenAPISpec } from '../services/openapiValidator.js';
+import { pool } from '../utils/db.js';
 
 const router = express.Router();
 
@@ -15,7 +20,6 @@ function generateSlug(name) {
 
 // Validation middleware
 const validateAPI = [
-  body('provider_email').isEmail().normalizeEmail(),
   body('name').trim().isLength({ min: 2, max: 255 }),
   body('short_description').trim().isLength({ min: 10, max: 500 }),
   body('long_description').optional().trim(),
@@ -24,109 +28,120 @@ const validateAPI = [
   body('contract_url').optional().isURL(),
   body('auth_type').optional().isIn(['none', 'apikey', 'oauth2', 'bearer']),
   body('pricing').optional().isIn(['free', 'freemium', 'paid']),
-  body('tags').optional().isArray()
+  body('tags').optional().isArray(),
+  body('tos_accepted').equals('true').withMessage('You must accept the Terms of Service')
 ];
 
-// POST /api/v1/apis - Register a new API
-router.post('/', validateAPI, async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
+// POST /api/v1/apis - Register a new API (requires auth)
+router.post('/',
+  authenticateProvider,
+  requireVerifiedEmail,
+  writeLimiter,
+  urlBlocklist('contract_url', 'test_endpoint'),
+  validateAPI,
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
 
-  try {
-    const {
-      provider_email,
-      name,
-      short_description,
-      long_description,
-      category,
-      contract_type = 'openapi',
-      contract_url,
-      contract_schema,
-      auth_type = 'apikey',
-      auth_instructions,
-      test_endpoint,
-      pricing = 'free',
-      tags = [],
-      endpoints = [],
-      examples = []
-    } = req.body;
+    try {
+      const {
+        name,
+        short_description,
+        long_description,
+        category,
+        contract_type = 'openapi',
+        contract_url,
+        contract_schema,
+        auth_type = 'apikey',
+        auth_instructions,
+        test_endpoint,
+        pricing = 'free',
+        tags = [],
+        endpoints = [],
+        examples = []
+      } = req.body;
 
-    // Find or create provider
-    let provider = await Provider.findByEmail(provider_email);
-    if (!provider) {
-      return res.status(404).json({ 
-        error: 'Provider not found. Please register as a provider first.',
-        hint: 'POST /api/v1/providers'
+      const provider = req.provider;
+
+      // Generate slug
+      let slug = generateSlug(name);
+
+      // Check if slug exists, append number if needed
+      let existing = await API.findBySlug(slug);
+      if (existing) {
+        let counter = 1;
+        while (existing) {
+          slug = `${generateSlug(name)}-${counter}`;
+          existing = await API.findBySlug(slug);
+          counter++;
+        }
+      }
+
+      // Create API
+      const api = await API.create({
+        providerId: provider.id,
+        name,
+        slug,
+        shortDescription: short_description,
+        longDescription: long_description,
+        category,
+        contractType: contract_type,
+        contractUrl: contract_url,
+        contractSchema: contract_schema,
+        authType: auth_type,
+        authInstructions: auth_instructions,
+        testEndpoint: test_endpoint,
+        pricing,
+        tags,
+        tosAcceptedAt: new Date()
       });
-    }
 
-    // Generate slug
-    let slug = generateSlug(name);
-    
-    // Check if slug exists, append number if needed
-    let existing = await API.findBySlug(slug);
-    if (existing) {
-      let counter = 1;
-      while (existing) {
-        slug = `${generateSlug(name)}-${counter}`;
-        existing = await API.findBySlug(slug);
-        counter++;
+      // Add endpoints if provided
+      if (endpoints && endpoints.length > 0) {
+        for (const endpoint of endpoints) {
+          await API.addEndpoint(api.id, endpoint);
+        }
       }
-    }
 
-    // Create API
-    const api = await API.create({
-      providerId: provider.id,
-      name,
-      slug,
-      shortDescription: short_description,
-      longDescription: long_description,
-      category,
-      contractType: contract_type,
-      contractUrl: contract_url,
-      contractSchema: contract_schema,
-      authType: auth_type,
-      authInstructions: auth_instructions,
-      testEndpoint: test_endpoint,
-      pricing,
-      tags
-    });
-
-    // Add endpoints if provided
-    if (endpoints && endpoints.length > 0) {
-      for (const endpoint of endpoints) {
-        await API.addEndpoint(api.id, endpoint);
+      // Add examples if provided
+      if (examples && examples.length > 0) {
+        for (const example of examples) {
+          await API.addExample(api.id, {
+            title: example.title,
+            description: example.description,
+            requestExample: example.request,
+            responseExample: example.response
+          });
+        }
       }
-    }
 
-    // Add examples if provided
-    if (examples && examples.length > 0) {
-      for (const example of examples) {
-        await API.addExample(api.id, {
-          title: example.title,
-          description: example.description,
-          requestExample: example.request,
-          responseExample: example.response
-        });
+      // Fire-and-forget OpenAPI validation
+      if (contract_type === 'openapi' && contract_url) {
+        validateOpenAPISpec(contract_url).then(result => {
+          API.updateOpenAPIValidation(api.id, {
+            openapiValid: result.valid,
+            openapiErrors: result.errors
+          });
+        }).catch(err => console.error('OpenAPI validation error:', err));
       }
-    }
 
-    res.status(201).json({
-      message: 'API registered successfully',
-      api: {
-        id: api.id,
-        slug: api.slug,
-        name: api.name,
-        url: `/api/v1/apis/${api.slug}`
-      }
-    });
-  } catch (error) {
-    console.error('Error creating API:', error);
-    res.status(500).json({ error: 'Failed to create API' });
+      res.status(201).json({
+        message: 'API registered successfully',
+        api: {
+          id: api.id,
+          slug: api.slug,
+          name: api.name,
+          url: `/api/v1/apis/${api.slug}`
+        }
+      });
+    } catch (error) {
+      console.error('Error creating API:', error);
+      res.status(500).json({ error: 'Failed to create API' });
+    }
   }
-});
+);
 
 // GET /api/v1/apis - List all APIs
 router.get('/', [
@@ -142,7 +157,7 @@ router.get('/', [
 
   try {
     const { limit = 20, offset = 0, category, verified } = req.query;
-    
+
     const apis = await API.list({
       limit: parseInt(limit),
       offset: parseInt(offset),
@@ -187,6 +202,69 @@ router.get('/:slug', async (req, res) => {
   } catch (error) {
     console.error('Error fetching API:', error);
     res.status(500).json({ error: 'Failed to fetch API' });
+  }
+});
+
+// GET /api/v1/apis/:slug/health - Get API health status
+router.get('/:slug/health', async (req, res) => {
+  try {
+    const api = await API.findBySlug(req.params.slug);
+    if (!api) {
+      return res.status(404).json({ error: 'API not found' });
+    }
+
+    res.json({
+      slug: api.slug,
+      health_status: api.health_status,
+      last_health_check: api.last_health_check,
+      health_check_failures: api.health_check_failures
+    });
+  } catch (error) {
+    console.error('Error fetching health:', error);
+    res.status(500).json({ error: 'Failed to fetch health status' });
+  }
+});
+
+// POST /api/v1/apis/:slug/report - Report an API
+const validateReport = [
+  body('reporter_type').isIn(['agent', 'user']).withMessage('reporter_type must be "agent" or "user"'),
+  body('reporter_id').optional().trim().isLength({ max: 255 }),
+  body('reason').isIn(['malicious', 'spam', 'inaccurate', 'inappropriate', 'other']).withMessage('Invalid reason'),
+  body('description').trim().isLength({ min: 10, max: 1000 }).withMessage('Description must be 10-1000 characters')
+];
+
+router.post('/:slug/report', writeLimiter, validateReport, async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  try {
+    const api = await API.findBySlug(req.params.slug);
+    if (!api) {
+      return res.status(404).json({ error: 'API not found' });
+    }
+
+    const { reporter_type, reporter_id, reason, description } = req.body;
+
+    const result = await pool.query(
+      `INSERT INTO api_reports (api_id, reporter_type, reporter_id, reason, description)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id, created_at`,
+      [api.id, reporter_type, reporter_id || null, reason, description]
+    );
+
+    res.status(201).json({
+      message: 'Report submitted successfully',
+      report: {
+        id: result.rows[0].id,
+        api_slug: req.params.slug,
+        created_at: result.rows[0].created_at
+      }
+    });
+  } catch (error) {
+    console.error('Error creating report:', error);
+    res.status(500).json({ error: 'Failed to submit report' });
   }
 });
 

@@ -79,4 +79,83 @@ router.get('/summary', async (req, res) => {
   }
 });
 
+// GET /api/v1/stats/agents/top - Top agents by submissions + discoveries
+router.get('/agents/top', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT agent_id, name, platform, api_submissions, api_discoveries,
+             (api_submissions + api_discoveries) as total_activity
+      FROM agents
+      ORDER BY total_activity DESC
+      LIMIT 20
+    `);
+    res.json({ agents: result.rows });
+  } catch (error) {
+    console.error('Error fetching top agents:', error);
+    res.status(500).json({ error: 'Failed to fetch top agents' });
+  }
+});
+
+// GET /api/v1/stats/agents/active - Most recently active agents
+router.get('/agents/active', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT agent_id, name, platform, api_submissions, api_discoveries, last_seen
+      FROM agents
+      WHERE last_seen IS NOT NULL
+      ORDER BY last_seen DESC
+      LIMIT 20
+    `);
+    res.json({ agents: result.rows });
+  } catch (error) {
+    console.error('Error fetching active agents:', error);
+    res.status(500).json({ error: 'Failed to fetch active agents' });
+  }
+});
+
+// GET /api/v1/stats/apis/top-discovered - APIs ranked by discovery_count
+router.get('/apis/top-discovered', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT a.id, a.name, a.slug, a.category, a.discovery_count,
+             p.name as provider_name
+      FROM apis a
+      LEFT JOIN providers p ON a.provider_id = p.id
+      WHERE a.active = true AND a.discovery_count > 0
+      ORDER BY a.discovery_count DESC
+      LIMIT 20
+    `);
+    res.json({ apis: result.rows });
+  } catch (error) {
+    console.error('Error fetching top discovered APIs:', error);
+    res.status(500).json({ error: 'Failed to fetch top discovered APIs' });
+  }
+});
+
+// GET /api/v1/stats/agents/discovery-trends - Daily discovery counts
+router.get('/agents/discovery-trends', [
+  query('days').optional().isInt({ min: 1, max: 365 })
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  try {
+    const days = parseInt(req.query.days || 30);
+    const result = await pool.query(
+      `SELECT DATE(discovered_at) as date, COUNT(*) as discoveries
+       FROM agent_api_discoveries
+       WHERE discovered_at >= CURRENT_DATE - $1::integer
+       GROUP BY DATE(discovered_at)
+       ORDER BY date ASC`,
+      [days]
+    );
+    res.json({ data: result.rows });
+  } catch (error) {
+    console.error('Error fetching discovery trends:', error);
+    res.status(500).json({ error: 'Failed to fetch discovery trends' });
+  }
+});
+
 export default router;
